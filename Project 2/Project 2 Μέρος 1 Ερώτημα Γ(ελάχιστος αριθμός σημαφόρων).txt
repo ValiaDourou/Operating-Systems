@@ -1,0 +1,31 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/shm.h>
+#include <errno.h>
+#include <semaphore.h>
+#include <fcntl.h>
+
+sem_t *s4,*s5;
+
+int main()
+{
+s5 = sem_open("ShePhore5", O_CREAT | O_EXCL, 0644, 0);
+s4 = sem_open("ShePhore4", O_CREAT | O_EXCL, 0644, 0);
+
+sem_init(s4,2,-1);
+sem_init(s5,2,-1);
+
+
+system("pwd");
+sem_post(s4);
+system("ls -l");
+sem_post(s4);
+system("ps -l");
+sem_post(s5);
+sem_wait(s4);
+system("date");
+sem_post(s5);
+sem_wait(s5);
+system("ls");
+}

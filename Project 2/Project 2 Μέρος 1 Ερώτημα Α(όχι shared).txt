@@ -1,0 +1,76 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <time.h>
+#include <fcntl.h>
+#define shm_size 1024
+#define N 2
+
+int *shroot;
+
+void calc(int *p,int *shroot)
+{
+int i;
+for(i=1; i<=10*N; i++)
+{
+*shroot=*shroot+p[i];
+}
+}
+
+int main()
+{
+clock_t start,end,total;
+key_t key=123456;
+int shmid;
+int p[10*N+1];
+int i,j;
+
+shmid=shmget(key,sizeof(int),0644|IPC_CREAT);
+
+if(shmid<0)
+{
+perror("shmget\n");
+exit(1);
+}
+
+shroot=(int *)shmat(shmid,NULL,0);
+*shroot=0;
+
+for(i=1;i<=10*N;i++)
+{
+p[i]=i;
+}
+
+for(j=1;j<=N;j++)
+{
+pid_t pid;
+pid=fork();
+if(pid>0)
+{
+if(j==1)
+{
+start=clock();
+}
+if(j==N){
+end=clock();
+total = (double)(end - start) / CLOCKS_PER_SEC;
+printf("Total time: %.8f\n",total);
+}
+continue;
+}
+else if (pid==0)
+{
+calc(p,shroot);
+if(j==N)
+{
+printf("\nshared %d\n",*shroot);
+}
+break;
+}
+}
+
+return 0;
+}

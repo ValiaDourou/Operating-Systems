@@ -1,0 +1,55 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#define shm_size 1024
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+int *X;
+
+void child_process_i (int *X)
+{
+int tmp,i;
+for (i = 1; i<=500;i++)
+{
+tmp = *X;
+tmp = tmp+1;
+*X = tmp;
+}
+};
+
+int main()
+{
+int i1,i2;
+key_t key=126;
+int shmid;
+
+shmid=shmget(key,sizeof(int),0644|IPC_CREAT);
+
+if(shmid<0)
+{
+perror("shmget\n");
+exit(1);
+}
+X=(int *)shmat(shmid,NULL,0);
+*X=0;
+
+i1=fork();
+if(i1>0)
+{
+i2=fork();
+}
+if(i1==0)
+{
+child_process_i(X);
+}
+if(i2==0)
+{
+child_process_i(X);
+printf("%d\n",*X);
+}
+
+return 0;
+}

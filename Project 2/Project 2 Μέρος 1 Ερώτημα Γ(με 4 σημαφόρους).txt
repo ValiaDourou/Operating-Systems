@@ -1,0 +1,31 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/shm.h>
+#include <errno.h>
+#include <semaphore.h>
+#include <fcntl.h>
+
+sem_t *s1,*s2,*s3,*s4;
+
+int main()
+{
+s1 = sem_open("pSemap1", O_CREAT | O_EXCL, 0644, 0);
+s2 = sem_open("pSemap2", O_CREAT | O_EXCL, 0644, 0);
+s3 = sem_open("pSemap3", O_CREAT | O_EXCL, 0644, 0);
+s4 = sem_open("pSemap4", O_CREAT | O_EXCL, 0644, 0);
+
+system("pwd");
+sem_post(s1);
+system("ls -l");
+sem_post(s2);
+system("ps -l");
+sem_post(s3);
+sem_wait(s1);
+sem_wait(s2);
+system("date");
+sem_post(s4);
+sem_wait(s3);
+sem_wait(s4);
+system("ls");
+}

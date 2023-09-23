@@ -1,0 +1,122 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/shm.h>
+#include <errno.h>
+#include <semaphore.h>
+#include <fcntl.h>
+#define N 3
+
+int *rc,*wc,*priority;
+sem_t *countsem,*datab;
+
+void read_data()
+{
+printf("Read\n");
+}
+
+void write_data()
+{
+printf("Written\n");
+}
+
+
+void reader(int *priority)
+{
+sem_wait(countsem);
+*rc=*rc+1;
+sem_post(countsem);
+sem_wait(datab);
+if(*priority==0)
+{
+read_data();
+sem_wait(countsem);
+*rc=*rc-1;
+if(*wc!=0)
+*priority=1;
+}
+sem_post(countsem);
+}
+else
+{
+sem_wait(countsem);
+if(*wc==0)
+{
+*priority=0;
+}
+*rc=*rc-1;
+sem_post(countsem);
+}
+sem_post(datab);
+}
+
+void writer(int *priority)
+{
+sem_wait(countsem);
+*wc=*wc+1;
+sem_post(countsem);
+sem_wait(datab);
+if(*priority==1)
+{
+write_data();
+sem_wait(countsem);
+*wc=*wc-1;
+if(*rc!=0)
+{
+*priority=0;
+}
+sem_post(countsem);
+else
+{
+sem_wait(countsem);
+if(*rc==0)
+{
+*priority=1;
+}
+*wc=*wc-1;
+sem_post(countsem);
+}
+sem_post(datab);
+}
+
+
+void main()
+{
+countsem = sem_open ("SemaphorCount", O_CREAT | O_EXCL, 0644, 1);
+datab = sem_open ("SemaphorData", O_CREAT | O_EXCL, 0644, 1);
+int shmid,shmid1,shmid2;
+key_t key=1239;
+key_t key1=12565;
+key_t key2=12454;
+
+shmid=shmget(key,N*sizeof(int),0644|IPC_CREAT);
+shmid1=shmget(key1,N*sizeof(int),0644|IPC_CREAT);
+shmid2=shmget(key2,N*sizeof(int),0644|IPC_CREAT);
+
+if((shmid<0)||(shmid1<0)||(shmid2<0))
+{
+perror("shmget\n");
+exit(1);
+}
+
+rc=(int *)shmat(shmid,NULL,0);
+
+wc=(int *)shmat(shmid1,NULL,0);
+
+priority=(int *)shmat(shmid2,NULL,0);
+
+*rc=1;
+*wc=0;
+*priority=1;
+
+pid_t pid;
+pid=fork();
+if(pid>0)
+{
+writer(priority);
+}
+else
+{
+reader(priority);
+}
+}

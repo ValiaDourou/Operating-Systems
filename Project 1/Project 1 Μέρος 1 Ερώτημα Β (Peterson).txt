@@ -1,0 +1,100 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#define shm_size 1024
+
+
+int *interested;
+int *turn;
+int *X;
+
+void enter_region(int num)
+{
+int other;
+other=1-num;
+interested[num]=1;
+while(*turn==num && interested[other]==1);
+};
+
+void leave_region(int num)
+{
+interested[num]=0;
+};
+
+void child_process_i(int *X,int num)
+{
+enter_region(num);
+int temp,i;
+for(i=0;i<500;i++)
+{
+temp=*X;
+temp=temp+1;
+*X=temp;
+}
+leave_region(num);
+};
+
+
+
+int main()
+{
+int shmid,shmid1,shmidx;
+key_t key=1235;
+key_t key1=1234;
+key_t key2=134;
+shmid=shmget(key,sizeof(int),0644|IPC_CREAT);
+shmid1=shmget(key1,sizeof(int),0644|IPC_CREAT);
+shmidx=shmget(key2,sizeof(int),0644|IPC_CREAT);
+
+if((shmid<0)||(shmid1<0)||(shmidx<0))
+{
+perror("shmget\n");
+exit(1);
+}
+int status=0;
+interested=(int *)shmat(shmid,NULL,0);
+*interested=0;
+turn=(int *)shmat(shmid1,NULL,0);
+*turn=1;
+X=(int *)shmat(shmidx,NULL,0);
+*X=0;
+interested[0]=0;
+interested[1]=0;
+int j;
+pid_t pid[2];
+for(j=0;j<2;j++)
+{
+pid[j]=fork();
+if(pid[j]>0)
+{
+continue;
+}
+else if(pid[j]==0)
+{
+break;
+}
+}
+
+
+if(pid[0]==0 && pid[1]==0)
+{
+child_process_i(X,0);
+printf("I'm %d, my father is %d and for me X is %d\n",getpid(),getppid(), *X);
+exit(0);
+}
+if(pid[1]==0)
+{
+child_process_i(X,1);
+printf("I'm %d, my father is %d and for me X is %d\n",getpid(),getppid(), *X);
+exit(0);
+}
+else
+{
+waitpid(pid[0],&status,0);
+waitpid(pid[1],&status,0);
+}
+return 0;
+}
